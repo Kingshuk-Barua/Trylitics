@@ -1,0 +1,14 @@
+# NEVER commit credentials
+Credentials/
+
+# local data workspace + logs (large / regenerable)
+data/
+logs/
+
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+
+# local env overrides
+.env

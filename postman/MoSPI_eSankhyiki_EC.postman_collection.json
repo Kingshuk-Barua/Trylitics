@@ -1,0 +1,140 @@
+{
+  "info": {
+    "name": "MoSPI eSankhyiki EC",
+    "description": "Client for the Government of India MoSPI 'eSankhyiki' Economic Census API (spec title: 'EC 4-6 APIs' v1.0).\n\nBase URL is {{baseUrl}} = https://esankhyiki.mospi.gov.in/EC\n\nAuth model: the API defines NO security scheme. The token is a PLAIN CUSTOM HEADER named 'AuthToken' — not OAuth, not Bearer. Collection auth is therefore 'No Auth'; the token rides in the header on the query* requests.\n\nToken lifecycle: TokenGenerate returns a token valid for ~10 MINUTES. The TokenGenerate request has a post-response script that auto-saves it into {{authToken}}, so re-minting is one click.\n\nCASING QUIRK (intentional, from the published spec): UserRegister uses lowercase \"password\"; TokenGenerate uses \"passWord\" (capital W). Both reference the same {{password}} env var. Do not normalise the JSON keys.\n\nNOTE: request filters are STATE-level only. district_code appears in the RESPONSE rows — query by state, aggregate district-side afterwards.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "item": [
+    {
+      "name": "1. UserRegister",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"<< your name >>\",\n  \"emailId\": \"{{emailId}}\",\n  \"organization\": \"<< your organization >>\",\n  \"purpose\": \"<< your purpose >>\",\n  \"password\": \"{{password}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/public/UserRegister",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "public", "UserRegister"]
+        },
+        "description": "One-time account registration. Fill name/organization/purpose in the body, set {{emailId}} and {{password}} in the environment, then Send. All five fields are required. Note the lowercase \"password\" key here."
+      }
+    },
+    {
+      "name": "2. TokenGenerate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Auto-save AuthToken from TokenGenerate. Token is valid ~10 minutes.",
+              "let token;",
+              "try {",
+              "  const res = pm.response.json();",
+              "  // Exact response key is NOT confirmed against the live API — try common variants.",
+              "  token = res.Token || res.token || res.AuthToken || res.authToken || (res.data && (res.data.Token || res.data.token));",
+              "} catch (e) {",
+              "  token = pm.response.text();",
+              "}",
+              "if (token) {",
+              "  pm.environment.set('authToken', token);",
+              "  console.log('authToken saved (prefix):', String(token).slice(0, 8) + '\\u2026');",
+              "} else {",
+              "  console.warn('No token field found. Inspect the raw response and adjust this script:', pm.response.text());",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"emailId\": \"{{emailId}}\",\n  \"passWord\": \"{{password}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/public/TokenGenerate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "public", "TokenGenerate"]
+        },
+        "description": "Mint a ~10-minute token. Note the capital-W \"passWord\" key (differs from UserRegister). The post-response script writes the returned token into {{authToken}}. If the console warns that no token was found, open the raw response and adjust the key list in the script."
+      }
+    },
+    {
+      "name": "3. queryEC6",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "AuthToken", "value": "{{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"state\": \"27\",\n  \"pageNum\": \"1\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/public/queryEC6",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "public", "queryEC6"]
+        },
+        "description": "Query Economic Census EC6 data. Required body fields: state, pageNum. Optional filters (add as needed): activity, nop, sof, ownership, sector. Returns 20 rows/page; rows include district_code. Example state=27 (Maharashtra). Requires the AuthToken header (auto-filled from {{authToken}})."
+      }
+    },
+    {
+      "name": "4. queryEC5",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "AuthToken", "value": "{{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"state\": \"27\",\n  \"pageNum\": \"1\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/public/queryEC5",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "public", "queryEC5"]
+        },
+        "description": "Query Economic Census EC5 data. Same body/filters as queryEC6. Optional filters: activity, nop, sof, ownership, sector."
+      }
+    },
+    {
+      "name": "5. queryEC4",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "AuthToken", "value": "{{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"state\": \"27\",\n  \"pageNum\": \"1\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/public/queryEC4",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "public", "queryEC4"]
+        },
+        "description": "Query Economic Census EC4 data. Same body/filters as queryEC6. Optional filters: activity, nop, sof, ownership, sector."
+      }
+    }
+  ]
+}
