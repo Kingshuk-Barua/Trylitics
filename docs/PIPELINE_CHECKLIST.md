@@ -71,19 +71,19 @@ Raw-only (local, no Firestore): geoBoundaries GeoJSON (stable copy at
 
 | Step | Source | Status | Rows | Last success | Published docs | Raw path | Notes / error |
 |---|---|---|---|---|---|---|---|
-| A | `idp_nfhs` | ✅ unchanged | 1267 | 2026-07-20T18:33:01Z | 1396 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/idp_nfhs/ingest_20260715_131243 | unchanged (hash match); total=1267 rows=1267 |
-| D | `datagovin_nfhs5` | ✅ unchanged | 707 | 2026-07-20T21:17:23Z | 707 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/datagovin_nfhs5/ingest_20260715_131244 | unchanged (hash match); total=707 |
-| C | `idp_secc` | ✅ unchanged | 3786 | 2026-07-20T21:17:26Z | 631 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/idp_secc/ingest_20260715_131246 | unchanged (hash match); total=3786 rows=3786 |
+| A | `idp_nfhs` | ✅ unchanged | 1267 | 2026-07-20T18:32:53Z | 1396 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/idp_nfhs/ingest_20260715_131243 | unchanged (hash match); total=1267 rows=1267 |
+| D | `datagovin_nfhs5` | ✅ unchanged | 707 | 2026-07-21T06:37:14Z | 707 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/datagovin_nfhs5/ingest_20260715_131244 | unchanged (hash match); total=707 |
+| C | `idp_secc` | ✅ unchanged | 3786 | 2026-07-20T19:27:13Z | 631 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/idp_secc/ingest_20260715_131246 | unchanged (hash match); total=3786 rows=3786 |
 | E | `geoboundaries` | ✅ unchanged | 735 | 2026-07-16T17:01:42Z | — | /Users/hrishavmajumder/Documents/Trylitics/data/raw/geo/ingest_20260715_131625 | unchanged; 735 features |
-| G | `nikshay_tb` | ✅ ok | 792 | 2026-07-21T04:55:51Z | 35 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/nikshay/ingest_20260720_211726 | 34 states OK, 792 district rows, 01/01/2026..20/07/2026 / failed: Andhra Pradesh: HTTPSConnectionPool(host='reports.nikshay.in', port=443): Max retries exceeded |
+| G | `nikshay_tb` | ✅ ok | 821 | 2026-07-21T06:27:11Z | 36 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/nikshay/ingest_20260721_060139 | 35 states OK, 821 district rows, 01/01/2026..21/07/2026 / failed: Dadra & Nagar Haveli: 0 districts returned; Daman & Diu: 0 districts returned |
 | B | `idp_pca` | ✅ unchanged | 188910 | 2026-07-16T17:01:31Z | 728 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/idp_pca/ingest_20260715_131856 | unchanged (hash match); total=188910 rows=188910 |
-| H | `pmjay_hospitals` | ✅ unchanged | 787 | 2026-07-21T06:03:46Z | 40 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/pmjay/ingest_20260721_045552 | 39 states, 787 districts; public/private counts parsed |
+| H | `pmjay_hospitals` | ✅ unchanged | 787 | 2026-07-21T06:00:38Z | 40 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/pmjay/ingest_20260721_045440 | 39 states, 787 districts; public/private counts parsed |
 | F | `idp_hmis` | ✅ ok | 547336 | 2026-07-16T16:58:17Z | — | /Users/hrishavmajumder/Documents/Trylitics/data/raw/idp_hmis/ingest_20260716_165817 | total=547336, fetched 547336 rows in 110 pages; expected (500000, 600000) OK |
 | J | `dhs_state` | ✅ ok | 144865 | 2026-07-16T17:04:48Z | — | /Users/hrishavmajumder/Documents/Trylitics/data/raw/dhs/ingest_20260716_170446 | 144865 rows across 29 page(s); STATE-level anchor only |
 | I | `shrug` | ⏭ skipped | — | — | — | — | manual step: pick tables at https://www.devdatalab.org/shrug_download/ and paste the direct zip URLs into config.SOURCES['shrug']['download_urls'] |
 
-_Firestore writes today (2026-07-21): 37 / 15000 cap._
-_Table auto-updated 2026-07-21T06:04:46Z._
+_Firestore writes today (2026-07-21): 75 / 15000 cap._
+_Table auto-updated 2026-07-21T08:04:55Z._
 
 <!-- STATE:END -->
 
