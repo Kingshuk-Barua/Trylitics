@@ -1,5 +1,7 @@
 # NEVER commit credentials
 Credentials/
+Credentials*.zip
+*.bak
 
 # local data workspace + logs (large / regenerable)
 data/
@@ -10,5 +12,7 @@ __pycache__/
 .DS_Store
 .venv/
 
-# local env overrides
+# local env overrides / secrets
 .env
+.env.*
+!.env.example

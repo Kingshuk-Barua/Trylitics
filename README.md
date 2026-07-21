@@ -22,11 +22,11 @@ app reads.
 |---|---|
 | `pipeline/` | The scraping/publishing package (fetchers, aggregators, publisher, daemon) |
 | `docs/` | All project documents — see below |
-| `Credentials/` | **Git-ignored.** API keys + Firebase service account (see [Credentials](#credentials--api-keys)) |
+| `Credentials/` | **Git-ignored.** Fallback API keys + service accounts (see [Credentials](#credentials--api-keys)) |
 | `data/raw/` | Raw scraped payloads, verbatim, per-ingest timestamped dirs |
 | `data/state/pipeline_state.json` | Machine-readable resume state (source of truth) |
 | `logs/pipeline.log` | Full run log |
-| `.env.example` | Optional environment overrides — copy to `.env` |
+| `.env.example` | Env template — copy to `.env` (auto-loaded; primary secret store) |
 | `notebooks/MAI_analysis.ipynb` | Executed analysis: crosswalk → composite MAI → tests → ML → publish |
 | `Saved_models/` | Trained models (joblib): 5 proxy-demand, surrogate, k-means |
 
@@ -47,21 +47,34 @@ pip3 install -r requirements.txt
 
 ## Credentials / API keys
 
-Everything lives in `Credentials/` (git-ignored). Two credentials are required:
+Credentials are read **from the environment first**, then fall back to the
+git-ignored `Credentials/` folder. This means the pipeline runs on **any
+machine** with just a `.env` — no local credential files required.
 
-| Credential | File | Where to get it |
-|---|---|---|
-| **Firebase Admin SDK key** (required to publish) | `Credentials/Firebase_Service_Account.json` | [Firebase console](https://console.firebase.google.com/project/medicine-attractive-index/settings/serviceaccounts/adminsdk) → Project settings → Service accounts → *Generate new private key*. The service account needs the **Firebase Admin SDK Administrator Service Agent** role (or broader) in [IAM](https://console.cloud.google.com/iam-admin/iam?project=medicine-attractive-index). |
-| **data.gov.in API key** (source D) | `Credentials/DATA_GOV_IN_API_KEY.json` → `data_gov_in.api_key` | Free at <https://www.data.gov.in/apis> (one key works platform-wide). |
+```bash
+cp .env.example .env      # then fill in the values
+```
+
+`pipeline/config.py` auto-loads `.env` on import (no `source` needed, zero extra
+dependencies). Real shell environment variables always override `.env`.
+
+Two credentials are required:
+
+| Credential | `.env` variable | Fallback file | Where to get it |
+|---|---|---|---|
+| **Firebase Admin SDK key** (required to publish) | `FIREBASE_SERVICE_ACCOUNT_JSON` (whole JSON on one line, single-quoted; or base64) — or a path in `FIREBASE_CREDENTIALS_PATH` | `Credentials/Firebase_Service_Account.json` | [Firebase console](https://console.firebase.google.com/project/medicine-attractive-index/settings/serviceaccounts/adminsdk) → Project settings → Service accounts → *Generate new private key*. Needs the **Firebase Admin SDK Administrator Service Agent** role (or broader) in [IAM](https://console.cloud.google.com/iam-admin/iam?project=medicine-attractive-index). |
+| **data.gov.in API key** (source D) | `DATA_GOV_IN_API_KEY` | `Credentials/DATA_GOV_IN_API_KEY.json` → `data_gov_in.api_key` | Free at <https://www.data.gov.in/apis> (one key works platform-wide). |
+
+Optional (unused by the core build, kept for the collaborative Sheets layer):
+`GOOGLE_SERVICE_ACCOUNT_JSON` / `GOOGLE_APPLICATION_CREDENTIALS`,
+`GOOGLE_SHEET_API_KEY`, `GOOGLE_SHEET_LINK`. See `.env.example` for the full
+list and every knob (`PMJAY_STATE_LIMIT`, `FIRESTORE_DAILY_WRITE_CAP`, …).
 
 **No key needed** for: India Data Portal (CKAN), Ni-kshay, PMJAY, geoBoundaries,
 DHS. **Deliberately skipped** (org-gated/dead): MoSPI eSankhyiki, NDAP, ABDM,
 IDSP — see [SCRAPING_CHECKLIST.md §1](docs/SCRAPING_CHECKLIST.md).
 SHRUG (optional) needs a manual table pick — paste zip URLs into
 `config.SOURCES['shrug']['download_urls']`.
-
-Optional environment overrides: copy `.env.example` to `.env` and
-`source .env` (plain env vars; the pipeline does not auto-load the file).
 
 ## Running the scraping workflow
 

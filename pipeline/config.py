@@ -4,17 +4,66 @@ Source registry, cadences, verification expectations, paths, credentials.
 See docs/PIPELINE_CHECKLIST.md for the human-readable work log and
 docs/SCRAPING_CHECKLIST.md for the original source research.
 
-Environment overrides (all optional — see .env.example):
-  TRILYTICS_FIREBASE_CREDENTIALS  path to a Firebase Admin SDK key JSON
-  DATA_GOV_IN_API_KEY             overrides the key stored in Credentials/
+Credentials are read from the environment first (a local .env is auto-loaded —
+see .env.example), falling back to the git-ignored Credentials/ folder. This
+lets the pipeline run on any machine or CI runner with no local files present.
+
+Environment variables (all optional — see .env.example for the full list):
+  FIREBASE_SERVICE_ACCOUNT_JSON   full Firebase Admin SDK key JSON (or base64)
+  FIREBASE_CREDENTIALS_PATH       ...or a path to that key file
+  GOOGLE_SERVICE_ACCOUNT_JSON     full GCP (Sheets/Drive) service-account JSON
+  DATA_GOV_IN_API_KEY             data.gov.in key (source D)
+  GOOGLE_SHEET_API_KEY            Google API key for read-only Sheets access
+  GOOGLE_SHEET_LINK               working spreadsheet URL
   PMJAY_STATE_LIMIT               test PMJAY on the first N states only
+  TRILYTICS_ENV_FILE              override the .env location
+  TRILYTICS_CREDENTIALS_DIR       override the fallback Credentials/ folder
 """
+import base64
 import json
 import os
 from collections import OrderedDict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+# ---------------------------------------------------------------------------
+# .env autoloading — dependency-free so it works on any machine before any
+# `pip install`. A local .env (project root, or TRILYTICS_ENV_FILE) is loaded
+# on import; real environment variables always take precedence over it.
+# ---------------------------------------------------------------------------
+def load_dotenv(path=None):
+    """Minimal .env parser. Supports `KEY=value`, `export KEY=value`,
+    `# comments`, blank lines, and single/double-quoted values. Single-quoted
+    values are kept verbatim (so a JSON blob's \\n escapes survive intact to
+    json.loads); double-quoted values expand \\n \\t \\" \\\\. Variables already
+    present in the real environment are never overwritten."""
+    path = Path(path or os.environ.get("TRILYTICS_ENV_FILE") or ROOT / ".env")
+    if not path.is_file():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):].lstrip()
+        if "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        key, val = key.strip(), val.strip()
+        if not key or key in os.environ:
+            continue
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):
+            quote, val = val[0], val[1:-1]
+            if quote == '"':
+                val = (val.replace("\\n", "\n").replace("\\t", "\t")
+                          .replace('\\"', '"').replace("\\\\", "\\"))
+        os.environ[key] = val
+
+
+load_dotenv()
+
 DATA_DIR = ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 INTERIM_DIR = DATA_DIR / "interim"
@@ -23,16 +72,97 @@ STATE_FILE = STATE_DIR / "pipeline_state.json"
 LOG_DIR = ROOT / "logs"
 CHECKLIST_FILE = ROOT / "docs" / "PIPELINE_CHECKLIST.md"
 
-CREDENTIALS_DIR = ROOT / "Credentials"
-FIREBASE_SERVICE_ACCOUNT = Path(
-    os.environ.get("TRILYTICS_FIREBASE_CREDENTIALS")
-    or CREDENTIALS_DIR / "Firebase_Service_Account.json")
-DATA_GOV_IN_CREDS = CREDENTIALS_DIR / "DATA_GOV_IN_API_KEY.json"
+# Local fallback store — consulted only when a value is absent from the
+# environment. Git-ignored and fully optional on a fresh machine.
+CREDENTIALS_DIR = Path(
+    os.environ.get("TRILYTICS_CREDENTIALS_DIR") or ROOT / "Credentials")
+
+
+def _load_json_file(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _service_account(env_json, path_vars, fallback_filename):
+    """Resolve a service-account dict, in priority order:
+      1. <env_json>          full JSON (or base64 of it) in the environment
+      2. any of path_vars    a path to a service-account .json file
+      3. Credentials/<fallback_filename>
+    Returns a dict usable with firebase_admin / google-auth Certificate()."""
+    blob = os.environ.get(env_json)
+    if blob and blob.strip():
+        blob = blob.strip()
+        if not blob.startswith("{"):          # tolerate base64-encoded JSON
+            blob = base64.b64decode(blob).decode("utf-8")
+        return json.loads(blob)
+    for var in path_vars:
+        p = os.environ.get(var)
+        if p and p.strip():
+            return _load_json_file(Path(p).expanduser())
+    return _load_json_file(CREDENTIALS_DIR / fallback_filename)
+
+
+def firebase_service_account():
+    """Firebase Admin SDK service-account dict (project medicine-attractive-index).
+    Env FIREBASE_SERVICE_ACCOUNT_JSON, or a path in FIREBASE_CREDENTIALS_PATH /
+    TRILYTICS_FIREBASE_CREDENTIALS; else Credentials/Firebase_Service_Account.json."""
+    return _service_account(
+        "FIREBASE_SERVICE_ACCOUNT_JSON",
+        ("FIREBASE_CREDENTIALS_PATH", "TRILYTICS_FIREBASE_CREDENTIALS"),
+        "Firebase_Service_Account.json")
+
+
+def firebase_project_id():
+    """Optional explicit project id (else inferred from the service account)."""
+    pid = os.environ.get("FIREBASE_PROJECT_ID")
+    return pid.strip() if pid and pid.strip() else None
+
+
+def google_service_account():
+    """GCP service-account dict for the optional Google Sheets / Drive layer.
+    Env GOOGLE_SERVICE_ACCOUNT_JSON, or a path in GOOGLE_APPLICATION_CREDENTIALS;
+    else Credentials/Google_Service_Account_Credentials.json."""
+    return _service_account(
+        "GOOGLE_SERVICE_ACCOUNT_JSON",
+        ("GOOGLE_APPLICATION_CREDENTIALS",),
+        "Google_Service_Account_Credentials.json")
+
+
+def data_gov_in_api_key():
+    """Platform-wide data.gov.in key (verified working platform-wide).
+    Env DATA_GOV_IN_API_KEY wins; else Credentials/DATA_GOV_IN_API_KEY.json."""
+    env = os.environ.get("DATA_GOV_IN_API_KEY")
+    if env and env.strip():
+        return env.strip()
+    return _load_json_file(
+        CREDENTIALS_DIR / "DATA_GOV_IN_API_KEY.json")["data_gov_in"]["api_key"]
+
+
+def google_sheet_api_key():
+    """Google API key for read-only Sheets access (optional curation layer).
+    Env GOOGLE_SHEET_API_KEY; else Credentials/Google_Sheet_Api.json."""
+    env = os.environ.get("GOOGLE_SHEET_API_KEY")
+    if env and env.strip():
+        return env.strip()
+    return _load_json_file(
+        CREDENTIALS_DIR / "Google_Sheet_Api.json")["Google_Sheet_Api"]
+
+
+def google_sheet_link():
+    """Working Google Sheet URL (optional staging layer).
+    Env GOOGLE_SHEET_LINK; else Credentials/Google_Sheet_link.json."""
+    env = os.environ.get("GOOGLE_SHEET_LINK")
+    if env and env.strip():
+        return env.strip()
+    return _load_json_file(
+        CREDENTIALS_DIR / "Google_Sheet_link.json")["Google_Sheet_link"]
+
 
 # Firestore Spark free tier allows ~20k writes/day; keep headroom.
-FIRESTORE_DAILY_WRITE_CAP = 15000
+FIRESTORE_DAILY_WRITE_CAP = int(
+    os.environ.get("FIRESTORE_DAILY_WRITE_CAP") or 15000)
 
-USER_AGENT = (
+USER_AGENT = os.environ.get("TRILYTICS_USER_AGENT") or (
     "TrilyticsMAI-pipeline/1.0 (academic student project; district health index; "
     "contact: hrishavmajumder23@gmail.com)"
 )
@@ -41,16 +171,6 @@ CKAN_BASE = "https://ckan.indiadataportal.com/api/3/action/datastore_search"
 CKAN_PAGE_SIZE = 5000
 
 DAEMON_TICK_SECONDS = 60
-
-
-def data_gov_in_api_key():
-    """Platform-wide data.gov.in key (verified working, see Credentials JSON).
-    Env var DATA_GOV_IN_API_KEY takes precedence when set."""
-    env = os.environ.get("DATA_GOV_IN_API_KEY")
-    if env:
-        return env
-    with open(DATA_GOV_IN_CREDS) as f:
-        return json.load(f)["data_gov_in"]["api_key"]
 
 
 # ---------------------------------------------------------------------------

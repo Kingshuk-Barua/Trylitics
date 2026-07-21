@@ -24,8 +24,12 @@ def client():
         import firebase_admin
         from firebase_admin import credentials, firestore
         if not firebase_admin._apps:
-            cred = credentials.Certificate(str(config.FIREBASE_SERVICE_ACCOUNT))
-            firebase_admin.initialize_app(cred)
+            cred = credentials.Certificate(config.firebase_service_account())
+            opts = {}
+            project_id = config.firebase_project_id()
+            if project_id:
+                opts["projectId"] = project_id
+            firebase_admin.initialize_app(cred, opts or None)
         _client = firestore.client()
     return _client
 

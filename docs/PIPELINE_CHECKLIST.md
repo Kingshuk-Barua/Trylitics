@@ -77,13 +77,13 @@ Raw-only (local, no Firestore): geoBoundaries GeoJSON (stable copy at
 | E | `geoboundaries` | ✅ unchanged | 735 | 2026-07-16T17:01:42Z | — | /Users/hrishavmajumder/Documents/Trylitics/data/raw/geo/ingest_20260715_131625 | unchanged; 735 features |
 | G | `nikshay_tb` | ✅ ok | 792 | 2026-07-21T04:55:51Z | 35 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/nikshay/ingest_20260720_211726 | 34 states OK, 792 district rows, 01/01/2026..20/07/2026 / failed: Andhra Pradesh: HTTPSConnectionPool(host='reports.nikshay.in', port=443): Max retries exceeded |
 | B | `idp_pca` | ✅ unchanged | 188910 | 2026-07-16T17:01:31Z | 728 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/idp_pca/ingest_20260715_131856 | unchanged (hash match); total=188910 rows=188910 |
-| H | `pmjay_hospitals` | ✅ unchanged | 787 | 2026-07-19T20:54:50Z | 40 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/pmjay/ingest_20260719_194841 | 39 states, 787 districts; public/private counts parsed |
+| H | `pmjay_hospitals` | ✅ unchanged | 787 | 2026-07-21T06:03:46Z | 40 | /Users/hrishavmajumder/Documents/Trylitics/data/raw/pmjay/ingest_20260721_045552 | 39 states, 787 districts; public/private counts parsed |
 | F | `idp_hmis` | ✅ ok | 547336 | 2026-07-16T16:58:17Z | — | /Users/hrishavmajumder/Documents/Trylitics/data/raw/idp_hmis/ingest_20260716_165817 | total=547336, fetched 547336 rows in 110 pages; expected (500000, 600000) OK |
 | J | `dhs_state` | ✅ ok | 144865 | 2026-07-16T17:04:48Z | — | /Users/hrishavmajumder/Documents/Trylitics/data/raw/dhs/ingest_20260716_170446 | 144865 rows across 29 page(s); STATE-level anchor only |
 | I | `shrug` | ⏭ skipped | — | — | — | — | manual step: pick tables at https://www.devdatalab.org/shrug_download/ and paste the direct zip URLs into config.SOURCES['shrug']['download_urls'] |
 
-_Firestore writes today (2026-07-21): 36 / 15000 cap._
-_Table auto-updated 2026-07-21T04:55:52Z._
+_Firestore writes today (2026-07-21): 37 / 15000 cap._
+_Table auto-updated 2026-07-21T06:04:46Z._
 
 <!-- STATE:END -->
 
