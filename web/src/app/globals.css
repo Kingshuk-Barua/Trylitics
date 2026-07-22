@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #0b0f14;
+  color: #e8eef2;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-display), ui-sans-serif, sans-serif;
+}
+
+/* Every figure is tabular so columns line up down a table and numbers do not
+   jitter when they change on hover. */
+.tnum {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+::selection {
+  background: #3fb6a8;
+  color: #0b0f14;
+}
+
+/* Scrollbars, dark to match the shell rather than punching a light hole in it */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1f2a35 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #1f2a35;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #2b3946;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .panel {
+    @apply rounded border border-line bg-panel;
+  }
+  .h-eyebrow {
+    @apply font-display text-[11px] uppercase tracking-[0.18em] text-dim;
+  }
+  .link-quiet {
+    @apply text-dim transition-colors duration-[160ms] ease-out hover:text-bright;
+  }
+  .btn {
+    @apply rounded border border-line bg-panel px-3 py-1.5 text-[12px] tracking-wide
+           text-dim transition-all duration-[160ms] ease-out
+           hover:border-accent hover:text-bright;
+  }
+  .btn-on {
+    @apply border-accent text-bright;
+  }
+  .cell {
+    @apply px-3 py-2 text-[13px];
+  }
+}
+
+/* The state-zoom transform. Long enough to read as a camera move, short enough
+   not to be in the way. */
+.map-zoom {
+  transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .map-zoom {
+    transition: none;
+  }
+}

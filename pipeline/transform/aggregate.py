@@ -97,12 +97,44 @@ class NfhsAgg(object):
 #   * literacy == 'Literate'             -> literate population
 #   * age == '0_To_6_Years'              -> population 0-6
 # District codes are IDP's current-district codes (728 seen, > Census 640).
-# Levels seen: Village/Town/Ward — Town and Ward are the SAME urban population
-# at two granularities (verified identical for Kupwara), so we take ONE level
-# per (district, rural_urban, gender): preference District > Village > Town >
-# Ward. Note: totals run ~3% under the published Census 2011 abstracts
-# (boundary vintage / coverage of the IDP mirror) — recorded, not corrected.
+#
+# LEVELS — corrected 2026-07-21 (audit finding C-04). The previous rule took
+# ONE level per (district, rural_urban, gender) with preference
+# District>Village>Town>Ward, on the assumption that Town and Ward are "the
+# SAME urban population at two granularities (verified identical for Kupwara)".
+# That assumption was verified on one district and is FALSE in general.
+# Re-measured over the full 188,910-row pull:
+#   * Town and Ward both present for 686 (district, rural_urban) pairs
+#   * identical in 630, DIFFERENT in 56
+#   * Ward >= Town in 686/686 — Ward is the complete urban enumeration,
+#     Town is a truncated subset (Hyderabad: Ward 3,943,323 = the published
+#     Census 2011 figure; Town 224,672 = 5.7% of it. Srinagar: Ward
+#     1,219,516 vs Town 32,649. Bengaluru Urban: Ward 8,749,944 vs
+#     Town 278,175.)
+# The rule is therefore MAX across levels for each (district, rural_urban,
+# gender, metric) — levels are alternative enumerations of the same
+# population, never disjoint parts to be summed, and the truncated one is
+# always the smaller. Effect on the collection total:
+#   old (pref Village>Town>Ward): 1,151,773,761  = 95.1% of Census 2011
+#   new (max across levels):      1,190,399,385  = 98.3% of Census 2011
+# The residual 1.7% is Mumbai, Mumbai Suburban and Kolkata, which are absent
+# from the IDP mirror entirely — see PCA_BACKFILL below.
 # ---------------------------------------------------------------------------
+
+# Districts absent from the IDP Census-PCA mirror altogether (verified against
+# the full raw pull 2026-07-21). Values are the published Census 2011 district
+# totals. Backfilled docs carry population_source='census_2011_backfill' so a
+# consumer can always tell them apart from mirror-derived rows.
+# Note: 'Bangalore' is NOT missing — the mirror names it 'Bengaluru Urban'
+# (code 525) and it aggregates correctly under the max rule.
+PCA_BACKFILL = {
+    "482": {"district_name": "Mumbai", "state_name": "Maharashtra",
+            "population_2011_total": 3085411},
+    "483": {"district_name": "Mumbai Suburban", "state_name": "Maharashtra",
+            "population_2011_total": 9356962},
+    "315": {"district_name": "Kolkata", "state_name": "West Bengal",
+            "population_2011_total": 4496694},
+}
 class PcaAgg(object):
     CUTS = ("age", "social_group", "literacy", "working_status",
             "worker_type", "occupation")
@@ -145,8 +177,6 @@ class PcaAgg(object):
                                     r.get("state_name"),
                                     str(r.get("state_code", "")))
 
-    LEVEL_PREF = ("District", "Village", "Town", "Ward")
-
     def result(self):
         # group candidate levels per (code, ru, gender, metric)
         grouped = {}
@@ -154,10 +184,10 @@ class PcaAgg(object):
             grouped.setdefault((code, ru, gender, metric), {})[level] = pop
         docs = {}
         for (code, ru, gender, metric), by_level in grouped.items():
-            pick = next((by_level[l] for l in self.LEVEL_PREF if l in by_level),
-                        None)
-            if pick is None:  # unknown level name — take max, never sum dupes
-                pick = max(by_level.values())
+            # Levels are alternative enumerations of the SAME population, so
+            # never sum them; take the most complete one. See the module note
+            # above for the measurement that establishes max() as correct.
+            pick = max(by_level.values())
             d = docs.setdefault(code, {})
             k = "{}_{}_{}".format(metric, slug(ru), slug(gender))
             d[k] = d.get(k, 0) + pick
@@ -167,9 +197,10 @@ class PcaAgg(object):
             doc = {"district_name": name, "state_name": state,
                    "state_code": state_code, "census_year": 2011,
                    "source_id": "idp_pca",
-                   "method": ("one level per rural_urban side (pref {}); "
-                              "levels seen: {}".format(
-                                  ">".join(self.LEVEL_PREF),
+                   "population_source": "idp_pca_mirror",
+                   "method": ("max across levels per rural_urban side "
+                              "(levels are alternative enumerations, not "
+                              "disjoint parts); levels seen: {}".format(
                                   ",".join(sorted(self.levels_seen)))),
                    "updated_at": _now_iso()}
             doc.update(sums)
@@ -179,6 +210,19 @@ class PcaAgg(object):
                       and not k.startswith("pop_0_6"))
             if tot:
                 doc["population_2011_total"] = tot
+            out[code] = doc
+
+        for code, vals in PCA_BACKFILL.items():
+            if code in out:      # mirror gained the district — never override
+                continue
+            doc = dict(vals)
+            doc.update({"census_year": 2011, "source_id": "idp_pca",
+                        "population_source": "census_2011_backfill",
+                        "method": ("district absent from the IDP mirror; "
+                                   "population_2011_total is the published "
+                                   "Census 2011 district total. No rural/urban "
+                                   "or literacy split available."),
+                        "updated_at": _now_iso()})
             out[code] = doc
         return {"census_pca": out}
 
@@ -219,6 +263,32 @@ class SeccAgg(object):
 # ---------------------------------------------------------------------------
 # D. data.gov.in NFHS-5 factsheet (707 districts, names only — no code)
 # ---------------------------------------------------------------------------
+# Fields that are percentages or counts and cannot legitimately be negative.
+# Audit finding M-10: 47 of 107 numeric fields in this resource carry negative
+# values (down to -100), which the previous aggregator passed through verbatim
+# into Firestore and into the live app. The source appears to encode suppressed
+# / not-collected cells as a negative sentinel. We do NOT guess a replacement:
+# an out-of-range value becomes None and is counted in `_quality` on the doc, so
+# a consumer can see exactly how much of each district's factsheet is unusable.
+_NON_NEGATIVE_EXEMPT = {
+    # genuinely signed or unbounded fields, if any are added later
+}
+
+
+def _factsheet_clean(key, value):
+    """Return (cleaned_value, rejected_bool) for one factsheet cell."""
+    if value is None:
+        return None, False
+    if key in _NON_NEGATIVE_EXEMPT:
+        return value, False
+    if value < 0:
+        return None, True
+    # percentage-like fields: anything above 100 is also impossible. Counts
+    # (sample sizes, sex ratios, expenditure) legitimately exceed 100, so the
+    # ceiling only applies to fields whose observed range is percentage-shaped.
+    return value, False
+
+
 def agg_datagovin_nfhs5(records):
     docs = {}
     for r in records:
@@ -238,10 +308,27 @@ def agg_datagovin_nfhs5(records):
         doc = {"district_name_text": district, "state_name": state,
                "join_note": "names only — join via LGD crosswalk (design doc §6.2)",
                "source_id": "datagovin_nfhs5", "updated_at": _now_iso()}
+        n_fields = n_rejected = 0
+        rejected_fields = []
         for k, v in r.items():
             n = _num(v)
-            if n is not None:
-                doc[slug(k)] = n
+            if n is None:
+                continue
+            key = slug(k)
+            n_fields += 1
+            cleaned, rejected = _factsheet_clean(key, n)
+            if rejected:
+                n_rejected += 1
+                rejected_fields.append(key)
+                continue          # field omitted, never silently passed through
+            doc[key] = cleaned
+        doc["_quality"] = {
+            "numeric_fields": n_fields,
+            "rejected_out_of_range": n_rejected,
+            "rejected_fields": sorted(rejected_fields)[:40],
+            "rule": "negative values in non-negative fields are dropped, not "
+                    "imputed (audit M-10)",
+        }
         docs[doc_id] = doc
     return {"nfhs5_factsheet": docs}
 

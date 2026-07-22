@@ -1,19 +1,89 @@
-# NEVER commit credentials
+# ---------------------------------------------------------------------------
+# Secrets & credentials — NEVER commit
+# ---------------------------------------------------------------------------
 Credentials/
 Credentials*.zip
 *.bak
-
-# local data workspace + logs (large / regenerable)
-data/
-logs/
-
-__pycache__/
-*.pyc
-.DS_Store
-.venv/
-
-# local env overrides / secrets
 .env
 .env.*
 !.env.example
 env.txt
+*.pem
+*.key
+*.p12
+serviceAccount*.json
+*-service-account*.json
+
+# ---------------------------------------------------------------------------
+# Local data workspace, logs & regenerable caches (large / rebuildable)
+# ---------------------------------------------------------------------------
+data/
+logs/
+*.log
+
+# read-only Firestore snapshot for the audit scripts (regenerable via
+# analysis/audit/00_pull_firestore.py)
+analysis/audit/_cache/
+
+# ---------------------------------------------------------------------------
+# Deck & docs — keep out of the repo
+# ---------------------------------------------------------------------------
+deck/
+docs/
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------------------
+# Node / Next.js (also covered by web/.gitignore, kept here as a safety net)
+# ---------------------------------------------------------------------------
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.env.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---------------------------------------------------------------------------
+# Editors / IDEs
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.claude/
+
+# ---------------------------------------------------------------------------
+# OS & Office junk
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Office / LibreOffice temporary lock files (e.g. ~$Deck.pptx)
+~$*
+*.tmp

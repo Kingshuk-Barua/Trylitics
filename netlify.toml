@@ -1,0 +1,49 @@
+# Netlify deploy for the MAI dashboard.
+#
+# The site is a Next.js STATIC EXPORT (next.config.mjs sets output: 'export'),
+# so there is no server runtime — Netlify just builds the app and serves the
+# files in web/out/. The app is in the web/ subdirectory of this repo, so the
+# build runs there via `base`.
+#
+# Before the first deploy, set the Firebase Web config in
+#   Netlify → Site configuration → Environment variables
+# using the NEXT_PUBLIC_FIREBASE_* names from web/.env.local.example. They are
+# public client identifiers, not secrets. Without them the app still loads and
+# falls back to the bundled snapshot in web/public/data (the status dot turns
+# amber and reads "bundled snapshot"); set NEXT_PUBLIC_FORCE_LOCAL_DATA=true to
+# force that offline mode deliberately.
+
+[build]
+  base = "web"                 # run the build inside web/
+  command = "npm run build"    # next build -> static export
+  publish = "out"              # web/out/, relative to base
+
+[build.environment]
+  NODE_VERSION = "20"          # Next 15 / React 19 need Node 18.18+; pin 20 LTS
+  NPM_FLAGS = "--no-audit --no-fund"
+
+# Deliberately NOT using @netlify/plugin-nextjs: that plugin wraps SSR/ISR
+# apps, but this one is a pure static export and is served straight from out/.
+
+# --- caching, mirroring the Firebase Hosting headers ------------------------
+# Firestore JSON and the bundled GeoJSON/JSON: fresh-ish, revalidated hourly.
+[[headers]]
+  for = "/*.json"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/*.geojson"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+# Hashed Next build assets are content-addressed: cache them forever.
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
