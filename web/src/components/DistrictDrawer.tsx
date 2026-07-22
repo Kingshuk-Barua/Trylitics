@@ -1,6 +1,6 @@
 'use client';
 /** The full record for one district. Everything `publish.py` writes appears here. */
-import { PILLAR_LABEL, PILLAR_ORDER, int, num, popShort, shortDate } from '@/lib/format';
+import { PILLAR_LABEL, PILLAR_ORDER, int, num, popShort } from '@/lib/format';
 import { percentileScale } from '@/lib/color';
 import { Bar } from './ui';
 import type { DistrictDoc } from '@/lib/types';
@@ -16,7 +16,6 @@ export function DistrictDrawer({
   const cvf = doc.current_vs_future;
   const interval = doc.rank_interval_p5_p95;
   const pillars = doc.pillar_scores ?? {};
-  const imputed = Object.entries(doc.is_imputed ?? {}).filter(([, v]) => v > 0);
 
   const Row = ({ k, v }: { k: string; v: React.ReactNode }) => (
     <div className="flex items-baseline justify-between gap-4 py-1">
@@ -26,8 +25,11 @@ export function DistrictDrawer({
   );
 
   return (
-    <aside className="panel flex max-h-[calc(100vh-140px)] flex-col overflow-y-auto">
-      <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line bg-panel px-4 py-3">
+    // No max-height and no overflow of its own: the panel grows to its content
+    // and the PAGE scrolls it, so the record never sits in a short box with an
+    // inner scrollbar next to a tall map.
+    <aside className="panel flex h-full flex-col">
+      <div className="flex items-start justify-between gap-4 border-b border-line bg-panel px-4 py-3">
         <div>
           <div className="h-eyebrow">{doc.state_name}</div>
           <h3 className="font-display text-[18px] tracking-[0.02em] text-bright">
@@ -177,26 +179,6 @@ export function DistrictDrawer({
           </div>
         )}
 
-        {/* provenance */}
-        <div className="rounded border border-line px-3 py-2">
-          <div className="h-eyebrow mb-1">Provenance</div>
-          <Row k="Run" v={doc.run_id ?? doc.model_version ?? '—'} />
-          <Row k="Updated" v={shortDate(doc.updated_at)} />
-          <Row k="Snapshot" v={doc.data_snapshot_id ?? '—'} />
-          {imputed.length > 0 ? (
-            <div className="mt-2">
-              <div className="text-[11px] text-dim">Imputed pillars</div>
-              {imputed.map(([k, v]) => (
-                <Row key={k} k={PILLAR_LABEL[k] ?? k} v={`${(v * 100).toFixed(0)}% filled`} />
-              ))}
-              <p className="mt-1 text-[11px] leading-relaxed text-dim">
-                {doc.imputation_method}
-              </p>
-            </div>
-          ) : (
-            <Row k="Imputed pillars" v="none" />
-          )}
-        </div>
       </div>
     </aside>
   );

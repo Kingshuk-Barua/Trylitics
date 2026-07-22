@@ -196,7 +196,9 @@ export function MapView({ compact = false }: { compact?: boolean }) {
         </div>
 
         {!compact && (
-          <div className="space-y-4">
+          // h-full so the record panel stretches to the row height set by the
+          // map instead of ending in a short box partway down the page.
+          <div className="h-full space-y-4">
             {doc ? (
               <DistrictDrawer
                 doc={doc}
