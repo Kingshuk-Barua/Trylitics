@@ -17,8 +17,12 @@ serviceAccount*.json
 # ---------------------------------------------------------------------------
 # Local data workspace, logs & regenerable caches (large / rebuildable)
 # ---------------------------------------------------------------------------
-data/
-logs/
+# ANCHORED to the repo root on purpose. A bare `data/` matches a directory of
+# that name at ANY depth, which silently swallowed web/public/data/ — the
+# bundled snapshot the deployed site falls back to when Firestore is
+# unreachable. The site then had no data at all. Keep the leading slash.
+/data/
+/logs/
 *.log
 
 # read-only Firestore snapshot for the audit scripts (regenerable via
